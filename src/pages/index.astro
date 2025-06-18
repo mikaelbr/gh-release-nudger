@@ -1,5 +1,5 @@
 ---
-import { getRepository, getReleases } from "../utils/github";
+import { getRepository, getReleases, getLatestCommits } from "../utils/github";
 import { getSecret } from "astro:env/server";
 
 // Server-side code goes here
@@ -28,35 +28,67 @@ const reposData = await Promise.all(
         `Invalid repository format: ${repoFullName}. Expected format: owner/repo`
       );
     }
-    const [repository, releases] = await Promise.all([
+    const [repository, releases, commits] = await Promise.all([
       getRepository(owner, repo),
       getReleases(owner, repo),
+      getLatestCommits(owner, repo, 50), // Get more commits to ensure we find unreleased ones
     ]);
 
     // Separate published and draft releases
     const publishedReleases = releases.filter((release) => !release.draft);
     const hasDraftRelease = releases.some((release) => release.draft);
 
-    // Calculate hours since last published release
-    let hoursSinceLastRelease = null;
-    if (publishedReleases.length > 0) {
-      const lastReleaseDate = new Date(publishedReleases[0].published_at);
-      const now = new Date();
-      const diffMs = now.getTime() - lastReleaseDate.getTime();
-      hoursSinceLastRelease = Math.floor(diffMs / (1000 * 60 * 60));
+    // Calculate hours since last unreleased commit
+    let hoursSinceLastUnreleasedCommit = null;
+
+    if (commits.length > 0) {
+      let firstUnreleasedCommitDate = null;
+
+      if (publishedReleases.length === 0) {
+        // No releases yet, so find the first commit ever
+        firstUnreleasedCommitDate = new Date(
+          commits[commits.length - 1].commit.author.date
+        );
+      } else {
+        // Find the latest release date
+        const latestReleaseDate = new Date(publishedReleases[0].published_at);
+
+        // Find commits that are after the latest release
+        const unreleasedCommits = commits.filter(
+          (commit) => new Date(commit.commit.author.date) > latestReleaseDate
+        );
+
+        if (unreleasedCommits.length > 0) {
+          // Find the first (oldest) unreleased commit
+          firstUnreleasedCommitDate = new Date(
+            unreleasedCommits[unreleasedCommits.length - 1].commit.author.date
+          );
+        }
+        // If no commits after latest release, firstUnreleasedCommitDate stays null
+      }
+
+      if (firstUnreleasedCommitDate) {
+        const now = new Date();
+        const diffMs = now.getTime() - firstUnreleasedCommitDate.getTime();
+        hoursSinceLastUnreleasedCommit = Math.floor(diffMs / (1000 * 60 * 60));
+      }
     }
 
     const shouldRelease =
       hasDraftRelease &&
-      hoursSinceLastRelease !== null &&
-      hoursSinceLastRelease >= releaseHoursThreshold;
+      hoursSinceLastUnreleasedCommit !== null &&
+      hoursSinceLastUnreleasedCommit >= releaseHoursThreshold;
+
+    const isUpToDate =
+      hoursSinceLastUnreleasedCommit === null && publishedReleases.length > 0;
 
     return {
       repository,
-      hoursSinceLastRelease,
+      hoursSinceLastUnreleasedCommit,
       hasDraftRelease,
       releases,
       shouldRelease,
+      isUpToDate,
     };
   })
 );
@@ -65,6 +97,8 @@ const reposData = await Promise.all(
 const sortedReposData = reposData.sort((a, b) => {
   if (a.shouldRelease && !b.shouldRelease) return -1;
   if (!a.shouldRelease && b.shouldRelease) return 1;
+  if (a.isUpToDate && !b.isUpToDate) return 1;
+  if (!a.isUpToDate && b.isUpToDate) return -1;
   return a.repository.full_name.localeCompare(b.repository.full_name);
 });
 
@@ -101,32 +135,46 @@ export const config = {
           sortedReposData.map(
             ({
               repository,
-              hoursSinceLastRelease,
+              hoursSinceLastUnreleasedCommit,
               hasDraftRelease,
               releases,
               shouldRelease,
+              isUpToDate,
             }) => (
-              <div class={`ttv-box${shouldRelease ? " ttv-box-warning" : ""}`}>
+              <div
+                class={`ttv-box${shouldRelease ? " ttv-box-warning" : ""}${isUpToDate ? " ttv-box-success" : ""}`}
+              >
                 <div class="ttv-row ttv-row-title">
                   <span class="ttv-repo-name">
                     {repository.full_name.replaceAll("/", "/\u200B")}
                   </span>
                 </div>
-                <div class="ttv-row">
-                  <span class="ttv-label">HOURS SINCE LAST RELEASE:</span>
-                </div>
-                <div class="ttv-row ttv-row-hours">
-                  <span class="ttv-hours-value">
-                    {hoursSinceLastRelease !== null
-                      ? hoursSinceLastRelease
-                      : releases.length === 0
-                        ? "NO RELEASES YET"
-                        : "NO PUBLISHED RELEASES"}
-                  </span>
-                </div>
+                {!isUpToDate && (
+                  <>
+                    <div class="ttv-row">
+                      <span class="ttv-label">
+                        HOURS SINCE UNRELEASED WORK STARTED:
+                      </span>
+                    </div>
+                    <div class="ttv-row ttv-row-hours">
+                      <span class="ttv-hours-value">
+                        {hoursSinceLastUnreleasedCommit !== null
+                          ? hoursSinceLastUnreleasedCommit
+                          : releases.length === 0
+                            ? "NO COMMITS YET"
+                            : "ALL UP TO DATE! 😊"}
+                      </span>
+                    </div>
+                  </>
+                )}
                 {shouldRelease && (
                   <div class="ttv-row ttv-row-warning">
                     <span class="ttv-warning">RELEASE NEEDED!</span>
+                  </div>
+                )}
+                {isUpToDate && (
+                  <div class="ttv-row ttv-row-success">
+                    <span class="ttv-success">EVERYTHING RELEASED! 🎉</span>
                   </div>
                 )}
               </div>
@@ -154,11 +202,15 @@ export const config = {
     --ttv-yellow: #ffff00;
     --ttv-cyan: #00ffff;
     --ttv-red: #ff0000;
+    --ttv-green: #00ff00;
     --ttv-box-bg: #000;
     --ttv-border: #ffff00;
     --ttv-warning-bg: #000;
     --ttv-warning-border: #ff0000;
     --ttv-warning-text: #ff0000;
+    --ttv-success-bg: #000;
+    --ttv-success-border: #00ff00;
+    --ttv-success-text: #00ff00;
     --ttv-section-label: #00ffff;
   }
 
@@ -251,6 +303,18 @@ export const config = {
     text-shadow: none !important;
   }
 
+  .ttv-box-success {
+    border-color: var(--ttv-success-border) !important;
+    background: var(--ttv-success-border) !important;
+    color: #000 !important;
+  }
+  .ttv-box-success * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+
   .ttv-row {
     display: flex;
     flex-wrap: wrap;
@@ -318,6 +382,24 @@ export const config = {
   .ttv-warning {
     color: var(--ttv-warning-text);
     background: var(--ttv-warning-bg);
+    padding: 0 0.2rem;
+    font-family: inherit;
+    text-transform: uppercase;
+  }
+  .ttv-row-success {
+    color: var(--ttv-success-text);
+    font-weight: bold;
+    font-size: clamp(1.2rem, 2vw, 1.7rem);
+    margin-top: 0.3rem;
+    background: var(--ttv-success-bg);
+    border-top: 2px solid var(--ttv-success-border);
+    padding-top: 0.2rem;
+    text-align: left;
+    letter-spacing: 0.08em;
+  }
+  .ttv-success {
+    color: var(--ttv-success-text);
+    background: var(--ttv-success-bg);
     padding: 0 0.2rem;
     font-family: inherit;
     text-transform: uppercase;

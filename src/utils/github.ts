@@ -27,6 +27,16 @@ export interface Release {
   }[];
 }
 
+export interface Commit {
+  sha: string;
+  commit: {
+    author: {
+      date: string;
+    };
+    message: string;
+  };
+}
+
 export async function getReleases(
   owner: string,
   repo: string
@@ -80,6 +90,33 @@ export async function getRepository(owner: string, repo: string) {
     };
   } catch (error) {
     console.error(`Error fetching repository ${owner}/${repo}:`, error);
+    throw error;
+  }
+}
+
+export async function getLatestCommits(
+  owner: string,
+  repo: string,
+  perPage: number = 10
+): Promise<Commit[]> {
+  try {
+    const { data } = await octokit.repos.listCommits({
+      owner,
+      repo,
+      per_page: perPage,
+    });
+
+    return data.map((commit) => ({
+      sha: commit.sha,
+      commit: {
+        author: {
+          date: commit.commit.author?.date || "",
+        },
+        message: commit.commit.message,
+      },
+    }));
+  } catch (error) {
+    console.error(`Error fetching commits for ${owner}/${repo}:`, error);
     throw error;
   }
 }
