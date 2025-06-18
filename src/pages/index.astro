@@ -5,36 +5,42 @@ import { getSecret } from "astro:env/server";
 // Server-side code goes here
 const timestamp = new Date().toISOString();
 
-// Get repo owner and name from env
-const owner = getSecret("GITHUB_REPO_OWNER") ?? "mrfylke";
-const repo = getSecret("GITHUB_REPO_NAME") ?? "kontraktsportal-api";
+// Get repos from env
+const reposStr = getSecret("GITHUB_REPOS") ?? "mrfylke/kontraktsportal-api";
+const repos = reposStr.split(",").map((repo) => repo.trim());
 
-// Fetch repository and release data
-const [repository, releases] = await Promise.all([
-  getRepository(owner, repo),
-  getReleases(owner, repo),
-]);
+// Fetch data for all repositories
+const reposData = await Promise.all(
+  repos.map(async (repoFullName) => {
+    const [owner, repo] = repoFullName.split("/");
+    const [repository, releases] = await Promise.all([
+      getRepository(owner, repo),
+      getReleases(owner, repo),
+    ]);
 
-// Calculate hours since last release
-let hoursSinceLastRelease = null;
-if (releases.length > 0) {
-  const lastReleaseDate = new Date(releases[0].published_at);
-  const now = new Date();
-  const diffMs = now.getTime() - lastReleaseDate.getTime();
-  hoursSinceLastRelease = Math.floor(diffMs / (1000 * 60 * 60));
-}
+    // Calculate hours since last release
+    let hoursSinceLastRelease = null;
+    if (releases.length > 0) {
+      const lastReleaseDate = new Date(releases[0].published_at);
+      const now = new Date();
+      const diffMs = now.getTime() - lastReleaseDate.getTime();
+      hoursSinceLastRelease = Math.floor(diffMs / (1000 * 60 * 60));
+    }
 
-// Check if there is a draft release
-const hasDraftRelease = releases.some((release) => release.draft);
+    // Check if there is a draft release
+    const hasDraftRelease = releases.some((release) => release.draft);
+
+    return {
+      repository,
+      hoursSinceLastRelease,
+      hasDraftRelease,
+    };
+  })
+);
 
 // Get threshold from env
 const thresholdStr = getSecret("RELEASE_HOURS_THRESHOLD");
 const releaseHoursThreshold = thresholdStr ? parseInt(thresholdStr, 10) : 72;
-// Show warning only if there is a draft release and threshold is exceeded
-const shouldRelease =
-  hasDraftRelease &&
-  hoursSinceLastRelease !== null &&
-  hoursSinceLastRelease >= releaseHoursThreshold;
 
 // Enable static generation with ISR revalidation
 export const prerender = true;
@@ -49,34 +55,53 @@ export const config = {
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>{repository.full_name} - GitHub Stats</title>
+    <title>GitHub Release Stats</title>
   </head>
   <body>
     <main>
-      <h1>{repository.full_name}</h1>
-      <p>{repository.description}</p>
+      <h1>GitHub Release Stats</h1>
 
       {
-        shouldRelease && (
-          <div class="release-warning">
-            🚨{" "}
-            <strong>
-              It has been {hoursSinceLastRelease} hours since the last release!
-            </strong>
-            <br />
-            <span>It's time to do a release!</span>
-          </div>
+        reposData.map(
+          ({ repository, hoursSinceLastRelease, hasDraftRelease }) => {
+            const shouldRelease =
+              hasDraftRelease &&
+              hoursSinceLastRelease !== null &&
+              hoursSinceLastRelease >= releaseHoursThreshold;
+
+            return (
+              <div class="repo-card">
+                <h2>{repository.full_name}</h2>
+                <p>{repository.description}</p>
+
+                {shouldRelease && (
+                  <div class="release-warning">
+                    🚨{" "}
+                    <strong>
+                      It has been {hoursSinceLastRelease} hours since the last
+                      release!
+                    </strong>
+                    <br />
+                    <span>It's time to do a release!</span>
+                  </div>
+                )}
+
+                <div class="release-info">
+                  <div>
+                    ⏰ Hours since last release:{" "}
+                    {hoursSinceLastRelease !== null
+                      ? hoursSinceLastRelease
+                      : "N/A"}
+                  </div>
+                  <div>
+                    📝 Draft release present: {hasDraftRelease ? "Yes" : "No"}
+                  </div>
+                </div>
+              </div>
+            );
+          }
         )
       }
-
-      <div class="release-info">
-        <div>
-          ⏰ Hours since last release: {
-            hoursSinceLastRelease !== null ? hoursSinceLastRelease : "N/A"
-          }
-        </div>
-        <div>📝 Draft release present: {hasDraftRelease ? "Yes" : "No"}</div>
-      </div>
 
       <p class="timestamp">Last updated: {timestamp}</p>
     </main>
@@ -98,13 +123,26 @@ export const config = {
     padding: 2rem;
   }
 
+  .repo-card {
+    margin-bottom: 3rem;
+    padding: 1.5rem;
+    border: 1px solid #e1e4e8;
+    border-radius: 8px;
+    background: #fff;
+  }
+
+  .repo-card h2 {
+    margin-top: 0;
+    color: #0366d6;
+  }
+
   .release-warning {
     background: #ffebee;
     color: #b71c1c;
     border: 2px solid #b71c1c;
     border-radius: 8px;
     padding: 1.5rem;
-    margin: 2rem 0;
+    margin: 1.5rem 0;
     font-size: 1.3rem;
     text-align: center;
     font-weight: bold;
@@ -112,7 +150,7 @@ export const config = {
   }
 
   .release-info {
-    margin: 2rem 0;
+    margin: 1.5rem 0;
     padding: 1rem;
     background: #e8f0fe;
     border-radius: 8px;
