@@ -1,12 +1,13 @@
 ---
 import { getRepository, getReleases } from "../utils/github";
+import { getSecret } from "astro:env/server";
 
 // Server-side code goes here
 const timestamp = new Date().toISOString();
 
-// Example repository (replace with your own)
-const owner = "mrfylke";
-const repo = "kontraktsportal-api";
+// Get repo owner and name from env
+const owner = getSecret("GITHUB_REPO_OWNER") ?? "mrfylke";
+const repo = getSecret("GITHUB_REPO_NAME") ?? "kontraktsportal-api";
 
 // Fetch repository and release data
 const [repository, releases] = await Promise.all([
@@ -25,6 +26,15 @@ if (releases.length > 0) {
 
 // Check if there is a draft release
 const hasDraftRelease = releases.some((release) => release.draft);
+
+// Get threshold from env
+const thresholdStr = getSecret("RELEASE_HOURS_THRESHOLD");
+const releaseHoursThreshold = thresholdStr ? parseInt(thresholdStr, 10) : 72;
+// Show warning only if there is a draft release and threshold is exceeded
+const shouldRelease =
+  hasDraftRelease &&
+  hoursSinceLastRelease !== null &&
+  hoursSinceLastRelease >= releaseHoursThreshold;
 
 // Enable static generation with ISR revalidation
 export const prerender = true;
@@ -45,6 +55,19 @@ export const config = {
     <main>
       <h1>{repository.full_name}</h1>
       <p>{repository.description}</p>
+
+      {
+        shouldRelease && (
+          <div class="release-warning">
+            🚨{" "}
+            <strong>
+              It has been {hoursSinceLastRelease} hours since the last release!
+            </strong>
+            <br />
+            <span>It's time to do a release!</span>
+          </div>
+        )
+      }
 
       <div class="release-info">
         <div>
@@ -73,6 +96,19 @@ export const config = {
     max-width: 800px;
     margin: 0 auto;
     padding: 2rem;
+  }
+
+  .release-warning {
+    background: #ffebee;
+    color: #b71c1c;
+    border: 2px solid #b71c1c;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    font-size: 1.3rem;
+    text-align: center;
+    font-weight: bold;
+    box-shadow: 0 2px 8px rgba(183, 28, 28, 0.1);
   }
 
   .release-info {
