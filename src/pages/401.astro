@@ -1,0 +1,153 @@
+---
+// 401 Unauthorized page
+---
+
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>401 Unauthorized - GitHub Release Stats</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <main>
+      <div class="ttv-header">
+        <span class="ttv-header-title">UNAUTHORIZED</span>
+      </div>
+      <div class="ttv-header-underline"></div>
+
+      <div class="ttv-error-container">
+        <div class="ttv-error-code">401</div>
+        <div class="ttv-error-message">ACCESS DENIED</div>
+        <div class="ttv-error-description">
+          YOU NEED A VALID SECRET PARAMETER TO ACCESS THIS SITE
+        </div>
+        <div class="ttv-error-example">EXAMPLE: /?secret=your-secret-key</div>
+      </div>
+    </main>
+  </body>
+</html>
+
+<style>
+  :root {
+    --ttv-bg: #000;
+    --ttv-white: #fff;
+    --ttv-yellow: #ffff00;
+    --ttv-cyan: #00ffff;
+    --ttv-red: #ff0000;
+    --ttv-green: #00ff00;
+  }
+
+  html {
+    font-size: clamp(14px, 1.5vw + 1vh, 28px);
+  }
+
+  body {
+    background: var(--ttv-bg);
+    color: var(--ttv-white);
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
+    margin: 0;
+    padding: 0;
+    font-size: 1rem;
+    line-height: 1.4;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  main {
+    max-width: 100vw;
+    margin: 0 auto;
+    padding: 0.5rem 0.5rem 2rem 0.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .ttv-header {
+    background: var(--ttv-bg);
+    color: var(--ttv-white);
+    text-align: left;
+    font-size: clamp(1.8rem, 4vw, 3rem);
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    padding: 0.5rem 0 0.2rem 0.5rem;
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
+    text-transform: uppercase;
+  }
+
+  .ttv-header-title {
+    background: var(--ttv-bg);
+    color: var(--ttv-white);
+    padding: 0 0.5rem;
+    font-family: inherit;
+  }
+
+  .ttv-header-underline {
+    width: 100%;
+    height: 8px;
+    background: var(--ttv-red);
+    margin-bottom: 2rem;
+  }
+
+  .ttv-error-container {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 2rem;
+    gap: 2rem;
+  }
+
+  .ttv-error-code {
+    font-size: clamp(4rem, 12vw, 8rem);
+    color: var(--ttv-red);
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    text-shadow: 2px 2px 0px rgba(255, 0, 0, 0.3);
+  }
+
+  .ttv-error-message {
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
+    color: var(--ttv-yellow);
+    font-weight: bold;
+    letter-spacing: 0.05em;
+    margin-bottom: 1rem;
+  }
+
+  .ttv-error-description {
+    font-size: clamp(0.9rem, 2vw, 1.2rem);
+    color: var(--ttv-cyan);
+    max-width: 600px;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+
+  .ttv-error-example {
+    font-size: clamp(0.8rem, 1.8vw, 1rem);
+    color: var(--ttv-white);
+    background: rgba(255, 255, 255, 0.1);
+    padding: 1rem 2rem;
+    border: 1px solid var(--ttv-yellow);
+    border-radius: 4px;
+    font-family: "Courier New", monospace;
+    letter-spacing: 0.02em;
+  }
+
+  @media (max-width: 768px) {
+    .ttv-error-container {
+      padding: 1rem;
+      gap: 1.5rem;
+    }
+
+    .ttv-error-example {
+      padding: 0.8rem 1rem;
+      word-break: break-all;
+    }
+  }
+</style>

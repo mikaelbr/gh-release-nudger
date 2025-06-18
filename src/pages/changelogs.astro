@@ -72,7 +72,9 @@ export const config = {
       <div class="ttv-header-underline"></div>
 
       <div class="ttv-nav">
-        <a href="/" class="ttv-nav-link">← BACK TO RELEASE STATUS</a>
+        <a href={`/${Astro.url.search}`} class="ttv-nav-link"
+          >← BACK TO RELEASE STATUS</a
+        >
       </div>
 
       <div class="ttv-section-label">LATEST RELEASES</div>

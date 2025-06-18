@@ -140,7 +140,9 @@ export const config = {
       <div class="ttv-header-underline"></div>
 
       <div class="ttv-nav">
-        <a href="/changelogs" class="ttv-nav-link">VIEW CHANGELOGS →</a>
+        <a href={`/changelogs${Astro.url.search}`} class="ttv-nav-link"
+          >VIEW CHANGELOGS →</a
+        >
       </div>
 
       <div class="ttv-section-label">REPOSITORY STATUS</div>

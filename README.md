@@ -1,14 +1,15 @@
-# Astro Starter Kit: Minimal
+# GitHub Release Stats Dashboard
 
-```sh
-pnpm create astro@latest -- --template minimal
-```
+A TekstTV-inspired dashboard for monitoring GitHub repository release status with authentication.
 
-[![Open in StackBlitz](https://developer.stackblitz.com/img/open_in_stackblitz.svg)](https://stackblitz.com/github/withastro/astro/tree/latest/examples/minimal)
-[![Open with CodeSandbox](https://assets.codesandbox.io/github/button-edit-lime.svg)](https://codesandbox.io/p/sandbox/github/withastro/astro/tree/latest/examples/minimal)
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/withastro/astro?devcontainer_path=.devcontainer/minimal/devcontainer.json)
+## Features
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+- **Release Status Monitoring**: Track time since unreleased work started
+- **Draft Release Detection**: Visual warnings when releases are needed
+- **Multi-Repository Support**: Monitor multiple repositories simultaneously
+- **Changelog Viewer**: View latest releases with raw markdown content
+- **Authentication**: Secret-based access control via query parameters
+- **Auto-refresh**: Updates every 5 minutes with ISR caching
 
 ## 🚀 Project Structure
 
@@ -29,13 +30,40 @@ There's nothing special about `src/components/`, but that's where we like to put
 
 Any static assets, like images, can be placed in the `public/` directory.
 
+## Environment Variables
+
+Create a `.env` file in the root directory with the following variables:
+
+```bash
+# GitHub Personal Access Token (required)
+GITHUB_TOKEN=your_github_token_here
+
+# Comma-separated list of repositories to monitor (required)
+GITHUB_REPOS=owner/repo1,owner/repo2,owner/repo3
+
+# Hours threshold for release warnings (optional, default: 72)
+RELEASE_HOURS_THRESHOLD=72
+
+# Secret for authentication (optional - if not set, no auth required)
+AUTH_SECRET=your-secret-key-here
+```
+
+## Authentication
+
+If `AUTH_SECRET` is configured, all pages require authentication via a secret query parameter:
+
+- **Access with secret**: `https://your-domain.com/?secret=your-secret-key`
+- **Without secret**: Returns 401 Unauthorized
+
+Navigation between pages preserves the secret parameter automatically.
+
 ## 🧞 Commands
 
 All commands are run from the root of the project, from a terminal:
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `pnpm install`             | Installs dependencies                            |
+| Command                | Action                                           |
+| :--------------------- | :----------------------------------------------- |
+| `pnpm install`         | Installs dependencies                            |
 | `pnpm dev`             | Starts local dev server at `localhost:4321`      |
 | `pnpm build`           | Build your production site to `./dist/`          |
 | `pnpm preview`         | Preview your build locally, before deploying     |
