@@ -82,6 +82,10 @@ export const config = {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GitHub Release Stats</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap"
+      rel="stylesheet"
+    />
   </head>
   <body>
     <main>
@@ -108,23 +112,16 @@ export const config = {
                     {repository.full_name.replaceAll("/", "/\u200B")}
                   </span>
                 </div>
-                <div class="ttv-row ttv-row-desc">
-                  <span>{repository.description}</span>
-                </div>
                 <div class="ttv-row">
                   <span class="ttv-label">HOURS SINCE LAST RELEASE:</span>
-                  <span class="ttv-value ttv-cyan">
+                </div>
+                <div class="ttv-row ttv-row-hours">
+                  <span class="ttv-hours-value">
                     {hoursSinceLastRelease !== null
                       ? hoursSinceLastRelease
                       : releases.length === 0
                         ? "NO RELEASES YET"
                         : "NO PUBLISHED RELEASES"}
-                  </span>
-                </div>
-                <div class="ttv-row">
-                  <span class="ttv-label">DRAFT RELEASE PRESENT:</span>
-                  <span class="ttv-value ttv-yellow">
-                    {hasDraftRelease ? "YES" : "NO"}
                   </span>
                 </div>
                 {shouldRelease && (
@@ -167,7 +164,7 @@ export const config = {
   body {
     background: var(--ttv-bg);
     color: var(--ttv-white);
-    font-family: "Courier New", Courier, monospace;
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
     margin: 0;
     padding: 0;
     font-size: 1.1rem;
@@ -182,12 +179,12 @@ export const config = {
   .ttv-header {
     background: var(--ttv-bg);
     color: var(--ttv-white);
-    text-align: center;
+    text-align: left;
     font-size: clamp(2rem, 5vw, 3.5rem);
     font-weight: bold;
     letter-spacing: 0.1em;
-    padding: 0.5rem 0 0.2rem 0;
-    font-family: "Courier New", Courier, monospace;
+    padding: 0.5rem 0 0.2rem 0.5rem;
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
     text-transform: uppercase;
   }
   .ttv-header-title {
@@ -325,6 +322,29 @@ export const config = {
     font-family: inherit;
   }
 
+  .ttv-row-hours {
+    width: 100%;
+    justify-content: center;
+    align-items: center;
+    margin: 0.2em 0 0.4em 0;
+    padding: 0.1em 0 0.2em 0;
+    background: var(--ttv-bg);
+  }
+  .ttv-hours-value {
+    color: var(--ttv-yellow);
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: bold;
+    font-family: inherit;
+    letter-spacing: 0.04em;
+    text-align: center;
+    text-shadow:
+      0 0 2px #000,
+      0 0 1px #000;
+    padding: 0.1em 0.3em;
+    line-height: 1.1;
+    display: block;
+  }
+
   @media (max-width: 600px) {
     main {
       padding: 0.2rem;
@@ -346,5 +366,24 @@ export const config = {
     .ttv-row-desc {
       font-size: clamp(0.9rem, 2vw, 1.1rem);
     }
+  }
+
+  .ttv-header,
+  .ttv-header-title,
+  .ttv-section-label,
+  .ttv-box,
+  .ttv-row,
+  .ttv-row-title,
+  .ttv-row-desc,
+  .ttv-label,
+  .ttv-value,
+  .ttv-yellow,
+  .ttv-cyan,
+  .ttv-row-warning,
+  .ttv-warning,
+  .ttv-footer,
+  .ttv-footer-timestamp,
+  .ttv-hours-value {
+    font-family: "Press Start 2P", "Courier New", Courier, monospace !important;
   }
 </style>
