@@ -139,6 +139,10 @@ export const config = {
       </div>
       <div class="ttv-header-underline"></div>
 
+      <div class="ttv-nav">
+        <a href="/changelogs" class="ttv-nav-link">VIEW CHANGELOGS →</a>
+      </div>
+
       <div class="ttv-section-label">REPOSITORY STATUS</div>
 
       <div class="ttv-grid">
@@ -278,6 +282,21 @@ export const config = {
     padding-left: 0.2rem;
     text-transform: uppercase;
     font-family: inherit;
+  }
+
+  .ttv-nav {
+    margin: 1rem 0;
+    padding-left: 0.5rem;
+  }
+  .ttv-nav-link {
+    color: var(--ttv-cyan);
+    text-decoration: none;
+    font-size: clamp(0.8rem, 1.5vw, 1.2rem);
+    font-family: inherit;
+    text-transform: uppercase;
+  }
+  .ttv-nav-link:hover {
+    color: var(--ttv-yellow);
   }
 
   .ttv-grid {
