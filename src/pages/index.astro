@@ -6,41 +6,67 @@ import { getSecret } from "astro:env/server";
 const timestamp = new Date().toISOString();
 
 // Get repos from env
-const reposStr = getSecret("GITHUB_REPOS") ?? "mrfylke/kontraktsportal-api";
+const reposStr = getSecret("GITHUB_REPOS");
+if (!reposStr) {
+  throw new Error(
+    "GITHUB_REPOS environment variable is not set. Please set it with a comma-separated list of repositories in format 'owner/repo'"
+  );
+}
+
 const repos = reposStr.split(",").map((repo) => repo.trim());
+
+// Get threshold from env
+const thresholdStr = getSecret("RELEASE_HOURS_THRESHOLD");
+const releaseHoursThreshold = thresholdStr ? parseInt(thresholdStr, 10) : 72;
 
 // Fetch data for all repositories
 const reposData = await Promise.all(
   repos.map(async (repoFullName) => {
     const [owner, repo] = repoFullName.split("/");
+    if (!owner || !repo) {
+      throw new Error(
+        `Invalid repository format: ${repoFullName}. Expected format: owner/repo`
+      );
+    }
     const [repository, releases] = await Promise.all([
       getRepository(owner, repo),
       getReleases(owner, repo),
     ]);
 
-    // Calculate hours since last release
+    // Separate published and draft releases
+    const publishedReleases = releases.filter((release) => !release.draft);
+    const hasDraftRelease = releases.some((release) => release.draft);
+
+    // Calculate hours since last published release
     let hoursSinceLastRelease = null;
-    if (releases.length > 0) {
-      const lastReleaseDate = new Date(releases[0].published_at);
+    if (publishedReleases.length > 0) {
+      const lastReleaseDate = new Date(publishedReleases[0].published_at);
       const now = new Date();
       const diffMs = now.getTime() - lastReleaseDate.getTime();
       hoursSinceLastRelease = Math.floor(diffMs / (1000 * 60 * 60));
     }
 
-    // Check if there is a draft release
-    const hasDraftRelease = releases.some((release) => release.draft);
+    const shouldRelease =
+      hasDraftRelease &&
+      hoursSinceLastRelease !== null &&
+      hoursSinceLastRelease >= releaseHoursThreshold;
 
     return {
       repository,
       hoursSinceLastRelease,
       hasDraftRelease,
+      releases,
+      shouldRelease,
     };
   })
 );
 
-// Get threshold from env
-const thresholdStr = getSecret("RELEASE_HOURS_THRESHOLD");
-const releaseHoursThreshold = thresholdStr ? parseInt(thresholdStr, 10) : 72;
+// Sort repositories: those needing release first, then alphabetically
+const sortedReposData = reposData.sort((a, b) => {
+  if (a.shouldRelease && !b.shouldRelease) return -1;
+  if (!a.shouldRelease && b.shouldRelease) return 1;
+  return a.repository.full_name.localeCompare(b.repository.full_name);
+});
 
 // Enable static generation with ISR revalidation
 export const prerender = true;
@@ -59,109 +85,266 @@ export const config = {
   </head>
   <body>
     <main>
-      <h1>GitHub Release Stats</h1>
+      <div class="ttv-header">
+        <span class="ttv-header-title">GITHUB RELEASE STATS</span>
+      </div>
+      <div class="ttv-header-underline"></div>
 
-      {
-        reposData.map(
-          ({ repository, hoursSinceLastRelease, hasDraftRelease }) => {
-            const shouldRelease =
-              hasDraftRelease &&
-              hoursSinceLastRelease !== null &&
-              hoursSinceLastRelease >= releaseHoursThreshold;
+      <div class="ttv-section-label">REPOSITORY STATUS</div>
 
-            return (
-              <div class="repo-card">
-                <h2>{repository.full_name}</h2>
-                <p>{repository.description}</p>
-
-                {shouldRelease && (
-                  <div class="release-warning">
-                    🚨{" "}
-                    <strong>
-                      It has been {hoursSinceLastRelease} hours since the last
-                      release!
-                    </strong>
-                    <br />
-                    <span>It's time to do a release!</span>
-                  </div>
-                )}
-
-                <div class="release-info">
-                  <div>
-                    ⏰ Hours since last release:{" "}
+      <div class="ttv-grid">
+        {
+          sortedReposData.map(
+            ({
+              repository,
+              hoursSinceLastRelease,
+              hasDraftRelease,
+              releases,
+              shouldRelease,
+            }) => (
+              <div class={`ttv-box${shouldRelease ? " ttv-box-warning" : ""}`}>
+                <div class="ttv-row ttv-row-title">
+                  <span class="ttv-repo-name">
+                    {repository.full_name.replaceAll("/", "/\u200B")}
+                  </span>
+                </div>
+                <div class="ttv-row ttv-row-desc">
+                  <span>{repository.description}</span>
+                </div>
+                <div class="ttv-row">
+                  <span class="ttv-label">HOURS SINCE LAST RELEASE:</span>
+                  <span class="ttv-value ttv-cyan">
                     {hoursSinceLastRelease !== null
                       ? hoursSinceLastRelease
-                      : "N/A"}
-                  </div>
-                  <div>
-                    📝 Draft release present: {hasDraftRelease ? "Yes" : "No"}
-                  </div>
+                      : releases.length === 0
+                        ? "NO RELEASES YET"
+                        : "NO PUBLISHED RELEASES"}
+                  </span>
                 </div>
+                <div class="ttv-row">
+                  <span class="ttv-label">DRAFT RELEASE PRESENT:</span>
+                  <span class="ttv-value ttv-yellow">
+                    {hasDraftRelease ? "YES" : "NO"}
+                  </span>
+                </div>
+                {shouldRelease && (
+                  <div class="ttv-row ttv-row-warning">
+                    <span class="ttv-warning">RELEASE NEEDED!</span>
+                  </div>
+                )}
               </div>
-            );
-          }
-        )
-      }
+            )
+          )
+        }
+      </div>
 
-      <p class="timestamp">Last updated: {timestamp}</p>
+      <div class="ttv-footer">
+        <span class="ttv-footer-timestamp">LAST UPDATED: {timestamp}</span>
+      </div>
     </main>
   </body>
 </html>
 
 <style>
+  :root {
+    --ttv-bg: #000;
+    --ttv-white: #fff;
+    --ttv-yellow: #ffff00;
+    --ttv-cyan: #00ffff;
+    --ttv-red: #ff0000;
+    --ttv-box-bg: #000;
+    --ttv-border: #ffff00;
+    --ttv-warning-bg: #000;
+    --ttv-warning-border: #ff0000;
+    --ttv-warning-text: #ff0000;
+    --ttv-section-label: #00ffff;
+  }
+
+  html {
+    font-size: clamp(16px, 2vw + 1vh, 32px);
+  }
+
   body {
-    font-family:
-      system-ui,
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      sans-serif;
-    line-height: 1.6;
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 2rem;
-  }
-
-  .repo-card {
-    margin-bottom: 3rem;
-    padding: 1.5rem;
-    border: 1px solid #e1e4e8;
-    border-radius: 8px;
-    background: #fff;
-  }
-
-  .repo-card h2 {
-    margin-top: 0;
-    color: #0366d6;
-  }
-
-  .release-warning {
-    background: #ffebee;
-    color: #b71c1c;
-    border: 2px solid #b71c1c;
-    border-radius: 8px;
-    padding: 1.5rem;
-    margin: 1.5rem 0;
-    font-size: 1.3rem;
-    text-align: center;
-    font-weight: bold;
-    box-shadow: 0 2px 8px rgba(183, 28, 28, 0.1);
-  }
-
-  .release-info {
-    margin: 1.5rem 0;
-    padding: 1rem;
-    background: #e8f0fe;
-    border-radius: 8px;
-    display: flex;
-    gap: 2rem;
+    background: var(--ttv-bg);
+    color: var(--ttv-white);
+    font-family: "Courier New", Courier, monospace;
+    margin: 0;
+    padding: 0;
     font-size: 1.1rem;
   }
 
-  .timestamp {
+  main {
+    max-width: 100vw;
+    margin: 0 auto;
+    padding: 0.5rem 0.5rem 2rem 0.5rem;
+  }
+
+  .ttv-header {
+    background: var(--ttv-bg);
+    color: var(--ttv-white);
+    text-align: center;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: bold;
+    letter-spacing: 0.1em;
+    padding: 0.5rem 0 0.2rem 0;
+    font-family: "Courier New", Courier, monospace;
+    text-transform: uppercase;
+  }
+  .ttv-header-title {
+    background: var(--ttv-bg);
+    color: var(--ttv-white);
+    padding: 0 0.5rem;
+    font-family: inherit;
+  }
+  .ttv-header-underline {
+    width: 100%;
+    height: 8px;
+    background: var(--ttv-red);
+    margin-bottom: 0.5rem;
+  }
+
+  .ttv-section-label {
+    color: var(--ttv-cyan);
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    margin: 0.5rem 0 0.5rem 0;
+    padding-left: 0.2rem;
+    text-transform: uppercase;
+    font-family: inherit;
+  }
+
+  .ttv-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+    gap: 1.5rem;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ttv-box {
+    background: var(--ttv-box-bg);
+    border: 2px solid var(--ttv-border);
+    min-width: 0;
+    max-width: 100%;
+    text-align: left;
+    font-family: inherit;
+    box-sizing: border-box;
+    padding: 0.2rem 0.7rem 0.7rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    overflow-wrap: break-word;
+    word-break: break-word;
+  }
+  .ttv-box-warning {
+    border-color: var(--ttv-warning-border) !important;
+  }
+
+  .ttv-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    margin: 0.1rem 0;
+    font-size: clamp(1.1rem, 2vw, 1.5rem);
+    font-family: inherit;
+  }
+  .ttv-row-title {
+    color: var(--ttv-yellow);
+    font-size: clamp(1.3rem, 2.5vw, 2rem);
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-top: 0.2rem;
+    margin-bottom: 0.1rem;
+    letter-spacing: 0.05em;
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    width: 100%;
+  }
+  .ttv-repo-name {
+    word-break: break-word;
+    white-space: normal;
+    overflow-wrap: break-word;
+    width: 100%;
+    display: block;
+  }
+  .ttv-row-desc {
+    color: var(--ttv-cyan);
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    margin-bottom: 0.2rem;
+    margin-top: 0;
+  }
+  .ttv-label {
+    color: var(--ttv-white);
+    min-width: 210px;
+    font-family: inherit;
+    text-transform: uppercase;
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+    letter-spacing: 0.04em;
+  }
+  .ttv-value {
+    font-family: inherit;
+    font-size: clamp(1.05rem, 2vw, 1.3rem);
+    margin-left: 0.5rem;
+  }
+  .ttv-yellow {
+    color: var(--ttv-yellow);
+  }
+  .ttv-cyan {
+    color: var(--ttv-cyan);
+  }
+  .ttv-row-warning {
+    color: var(--ttv-warning-text);
+    font-weight: bold;
+    font-size: clamp(1.2rem, 2vw, 1.7rem);
+    margin-top: 0.3rem;
+    background: var(--ttv-warning-bg);
+    border-top: 2px solid var(--ttv-warning-border);
+    padding-top: 0.2rem;
+    text-align: left;
+    letter-spacing: 0.08em;
+  }
+  .ttv-warning {
+    color: var(--ttv-warning-text);
+    background: var(--ttv-warning-bg);
+    padding: 0 0.2rem;
+    font-family: inherit;
+    text-transform: uppercase;
+  }
+  .ttv-footer {
     margin-top: 2rem;
-    color: #666;
-    font-size: 0.9rem;
+    text-align: center;
+    color: var(--ttv-yellow);
+    font-size: clamp(1rem, 2vw, 1.3rem);
+    font-family: inherit;
+    letter-spacing: 0.04em;
+  }
+  .ttv-footer-timestamp {
+    color: var(--ttv-cyan);
+    font-family: inherit;
+  }
+
+  @media (max-width: 600px) {
+    main {
+      padding: 0.2rem;
+    }
+    .ttv-grid {
+      grid-template-columns: 1fr;
+      gap: 1rem;
+    }
+    .ttv-box {
+      padding: 0.2rem 0.2rem 0.7rem 0.2rem;
+    }
+    .ttv-label {
+      min-width: 120px;
+      font-size: clamp(0.95rem, 2vw, 1.1rem);
+    }
+    .ttv-row-title {
+      font-size: clamp(1.1rem, 2vw, 1.5rem);
+    }
+    .ttv-row-desc {
+      font-size: clamp(0.9rem, 2vw, 1.1rem);
+    }
   }
 </style>
