@@ -241,6 +241,14 @@ export const config = {
   }
   .ttv-box-warning {
     border-color: var(--ttv-warning-border) !important;
+    background: var(--ttv-warning-border) !important;
+    color: #000 !important;
+  }
+  .ttv-box-warning * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
   }
 
   .ttv-row {
@@ -342,12 +350,12 @@ export const config = {
     font-family: inherit;
     letter-spacing: 0.04em;
     text-align: center;
-    text-shadow:
-      0 0 2px #000,
-      0 0 1px #000;
     padding: 0.1em 0.3em;
     line-height: 1.1;
     display: block;
+    background: transparent;
+    box-shadow: none;
+    text-shadow: none;
   }
 
   @media (max-width: 600px) {
