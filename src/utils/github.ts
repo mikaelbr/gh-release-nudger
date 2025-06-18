@@ -97,7 +97,7 @@ export async function getRepository(owner: string, repo: string) {
 export async function getLatestCommits(
   owner: string,
   repo: string,
-  perPage: number = 10
+  perPage: number = 50
 ): Promise<Commit[]> {
   try {
     const { data } = await octokit.repos.listCommits({

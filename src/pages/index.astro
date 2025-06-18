@@ -31,15 +31,16 @@ const reposData = await Promise.all(
     const [repository, releases, commits] = await Promise.all([
       getRepository(owner, repo),
       getReleases(owner, repo),
-      getLatestCommits(owner, repo, 50), // Get more commits to ensure we find unreleased ones
+      getLatestCommits(owner, repo, 50),
     ]);
 
     // Separate published and draft releases
     const publishedReleases = releases.filter((release) => !release.draft);
     const hasDraftRelease = releases.some((release) => release.draft);
 
-    // Calculate hours since last unreleased commit
-    let hoursSinceLastUnreleasedCommit = null;
+    // Calculate time since first unreleased commit
+    let timeSinceUnreleasedWork = null;
+    let isMinutes = false;
 
     if (commits.length > 0) {
       let firstUnreleasedCommitDate = null;
@@ -64,27 +65,37 @@ const reposData = await Promise.all(
             unreleasedCommits[unreleasedCommits.length - 1].commit.author.date
           );
         }
-        // If no commits after latest release, firstUnreleasedCommitDate stays null
       }
 
       if (firstUnreleasedCommitDate) {
         const now = new Date();
         const diffMs = now.getTime() - firstUnreleasedCommitDate.getTime();
-        hoursSinceLastUnreleasedCommit = Math.floor(diffMs / (1000 * 60 * 60));
+        const totalMinutes = Math.floor(diffMs / (1000 * 60));
+
+        if (totalMinutes < 60) {
+          timeSinceUnreleasedWork = totalMinutes;
+          isMinutes = true;
+        } else {
+          timeSinceUnreleasedWork = Math.floor(totalMinutes / 60);
+          isMinutes = false;
+        }
       }
     }
 
     const shouldRelease =
       hasDraftRelease &&
-      hoursSinceLastUnreleasedCommit !== null &&
-      hoursSinceLastUnreleasedCommit >= releaseHoursThreshold;
+      timeSinceUnreleasedWork !== null &&
+      (isMinutes
+        ? timeSinceUnreleasedWork >= releaseHoursThreshold * 60
+        : timeSinceUnreleasedWork >= releaseHoursThreshold);
 
     const isUpToDate =
-      hoursSinceLastUnreleasedCommit === null && publishedReleases.length > 0;
+      timeSinceUnreleasedWork === null && publishedReleases.length > 0;
 
     return {
       repository,
-      hoursSinceLastUnreleasedCommit,
+      timeSinceUnreleasedWork,
+      isMinutes,
       hasDraftRelease,
       releases,
       shouldRelease,
@@ -135,7 +146,8 @@ export const config = {
           sortedReposData.map(
             ({
               repository,
-              hoursSinceLastUnreleasedCommit,
+              timeSinceUnreleasedWork,
+              isMinutes,
               hasDraftRelease,
               releases,
               shouldRelease,
@@ -153,13 +165,14 @@ export const config = {
                   <>
                     <div class="ttv-row">
                       <span class="ttv-label">
-                        HOURS SINCE UNRELEASED WORK STARTED:
+                        {isMinutes ? "MINUTES" : "HOURS"} SINCE UNRELEASED WORK
+                        STARTED:
                       </span>
                     </div>
                     <div class="ttv-row ttv-row-hours">
                       <span class="ttv-hours-value">
-                        {hoursSinceLastUnreleasedCommit !== null
-                          ? hoursSinceLastUnreleasedCommit
+                        {timeSinceUnreleasedWork !== null
+                          ? timeSinceUnreleasedWork
                           : releases.length === 0
                             ? "NO COMMITS YET"
                             : "ALL UP TO DATE! 😊"}
