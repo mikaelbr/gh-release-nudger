@@ -165,14 +165,13 @@ export const config = {
                   <>
                     <div class="ttv-row">
                       <span class="ttv-label">
-                        {isMinutes ? "MINUTES" : "HOURS"} SINCE UNRELEASED WORK
-                        STARTED:
+                        TIME SINCE UNRELEASED WORK STARTED:
                       </span>
                     </div>
                     <div class="ttv-row ttv-row-hours">
                       <span class="ttv-hours-value">
                         {timeSinceUnreleasedWork !== null
-                          ? timeSinceUnreleasedWork
+                          ? `${timeSinceUnreleasedWork}${isMinutes ? "m" : "h"}`
                           : releases.length === 0
                             ? "NO COMMITS YET"
                             : "ALL UP TO DATE! 😊"}
