@@ -29,19 +29,18 @@ const reposData = await Promise.all(
       getReleases(owner, repo),
     ]);
 
-    // Get published releases only and sort by date
-    const publishedReleases = releases
+    // Get only the latest published release
+    const latestRelease = releases
       .filter((release) => !release.draft)
       .sort(
         (a, b) =>
           new Date(b.published_at).getTime() -
           new Date(a.published_at).getTime()
-      )
-      .slice(0, 5); // Show only latest 5 releases
+      )[0];
 
     return {
       repository,
-      releases: publishedReleases,
+      latestRelease,
     };
   })
 );
@@ -76,55 +75,37 @@ export const config = {
         <a href="/" class="ttv-nav-link">← BACK TO RELEASE STATUS</a>
       </div>
 
-      <div class="ttv-section-label">RECENT RELEASES</div>
+      <div class="ttv-section-label">LATEST RELEASES</div>
 
-      <div class="ttv-changelog-grid">
+      <div class="changelog-container">
         {
-          reposData.map(({ repository, releases }) => (
-            <div class="ttv-repo-section">
-              <h2 class="ttv-repo-title">
-                {repository.full_name.replaceAll("/", "/\u200B")}
-              </h2>
+          reposData.map(({ repository, latestRelease }) => (
+            <div class="repo-section">
+              <h2 class="repo-title">{repository.full_name}</h2>
 
-              {releases.length === 0 ? (
-                <div class="ttv-no-releases">NO PUBLISHED RELEASES</div>
+              {!latestRelease ? (
+                <div class="no-releases">No published releases</div>
               ) : (
-                <div class="ttv-releases">
-                  {releases.map((release) => (
-                    <div class="ttv-release">
-                      <div class="ttv-release-header">
-                        <span class="ttv-release-tag">{release.tag_name}</span>
-                        <span class="ttv-release-date">
-                          {new Date(release.published_at).toLocaleDateString(
-                            "en-US",
-                            {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            }
-                          )}
-                        </span>
-                      </div>
-                      <div class="ttv-release-name">
-                        {release.name || release.tag_name}
-                      </div>
-                      {release.body && (
-                        <div class="ttv-release-body">
-                          {release.body
-                            .split("\n")
-                            .slice(0, 10)
-                            .map((line, index) => (
-                              <div class="ttv-release-line">
-                                {line.trim() || " "}
-                              </div>
-                            ))}
-                          {release.body.split("\n").length > 10 && (
-                            <div class="ttv-release-more">... [TRUNCATED]</div>
-                          )}
-                        </div>
+                <div class="release">
+                  <div class="release-header">
+                    <span class="release-tag">{latestRelease.tag_name}</span>
+                    <span class="release-date">
+                      {new Date(latestRelease.published_at).toLocaleDateString(
+                        "en-US",
+                        {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        }
                       )}
-                    </div>
-                  ))}
+                    </span>
+                  </div>
+                  <div class="release-name">
+                    {latestRelease.name || latestRelease.tag_name}
+                  </div>
+                  {latestRelease.body && (
+                    <pre class="release-body">{latestRelease.body}</pre>
+                  )}
                 </div>
               )}
             </div>
@@ -152,7 +133,6 @@ export const config = {
     --ttv-cyan: #00ffff;
     --ttv-red: #ff0000;
     --ttv-green: #00ff00;
-    --ttv-box-bg: #000;
     --ttv-border: #ffff00;
     --ttv-section-label: #00ffff;
   }
@@ -177,6 +157,7 @@ export const config = {
     padding: 0.5rem 0.5rem 2rem 0.5rem;
   }
 
+  /* TekstTV Header and Navigation styles */
   .ttv-header {
     background: var(--ttv-bg);
     color: var(--ttv-white);
@@ -185,15 +166,17 @@ export const config = {
     font-weight: bold;
     letter-spacing: 0.1em;
     padding: 0.5rem 0 0.2rem 0.5rem;
-    font-family: inherit;
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
     text-transform: uppercase;
   }
+
   .ttv-header-title {
     background: var(--ttv-bg);
     color: var(--ttv-white);
     padding: 0 0.5rem;
     font-family: inherit;
   }
+
   .ttv-header-underline {
     width: 100%;
     height: 8px;
@@ -205,13 +188,15 @@ export const config = {
     margin: 1rem 0;
     padding-left: 0.5rem;
   }
+
   .ttv-nav-link {
     color: var(--ttv-cyan);
     text-decoration: none;
     font-size: clamp(0.8rem, 1.5vw, 1.2rem);
-    font-family: inherit;
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
     text-transform: uppercase;
   }
+
   .ttv-nav-link:hover {
     color: var(--ttv-yellow);
   }
@@ -224,100 +209,7 @@ export const config = {
     margin: 1rem 0 0.5rem 0;
     padding-left: 0.2rem;
     text-transform: uppercase;
-    font-family: inherit;
-  }
-
-  .ttv-changelog-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 2rem;
-    width: 100%;
-  }
-
-  .ttv-repo-section {
-    border: 2px solid var(--ttv-border);
-    padding: 1rem;
-    background: var(--ttv-box-bg);
-  }
-
-  .ttv-repo-title {
-    color: var(--ttv-yellow);
-    font-size: clamp(1.2rem, 2.5vw, 1.8rem);
-    font-weight: bold;
-    text-transform: uppercase;
-    margin: 0 0 1rem 0;
-    letter-spacing: 0.05em;
-    font-family: inherit;
-    word-break: break-word;
-  }
-
-  .ttv-no-releases {
-    color: var(--ttv-cyan);
-    font-size: clamp(1rem, 2vw, 1.3rem);
-    text-align: center;
-    padding: 2rem;
-    font-family: inherit;
-  }
-
-  .ttv-releases {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-  }
-
-  .ttv-release {
-    border: 1px solid var(--ttv-cyan);
-    padding: 0.8rem;
-    background: var(--ttv-bg);
-  }
-
-  .ttv-release-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.5rem;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  .ttv-release-tag {
-    color: var(--ttv-yellow);
-    font-size: clamp(0.9rem, 1.8vw, 1.2rem);
-    font-weight: bold;
-    font-family: inherit;
-  }
-
-  .ttv-release-date {
-    color: var(--ttv-cyan);
-    font-size: clamp(0.8rem, 1.5vw, 1rem);
-    font-family: inherit;
-  }
-
-  .ttv-release-name {
-    color: var(--ttv-white);
-    font-size: clamp(0.9rem, 1.8vw, 1.2rem);
-    margin-bottom: 0.8rem;
-    font-family: inherit;
-    word-break: break-word;
-  }
-
-  .ttv-release-body {
-    color: var(--ttv-white);
-    font-size: clamp(0.8rem, 1.5vw, 1rem);
-    font-family: inherit;
-    line-height: 1.3;
-  }
-
-  .ttv-release-line {
-    margin-bottom: 0.3rem;
-    word-break: break-word;
-    white-space: pre-wrap;
-  }
-
-  .ttv-release-more {
-    color: var(--ttv-cyan);
-    font-style: italic;
-    margin-top: 0.5rem;
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
   }
 
   .ttv-footer {
@@ -325,27 +217,132 @@ export const config = {
     text-align: center;
     color: var(--ttv-yellow);
     font-size: clamp(0.8rem, 1.5vw, 1.1rem);
-    font-family: inherit;
+    font-family: "Press Start 2P", "Courier New", Courier, monospace;
     letter-spacing: 0.04em;
   }
+
   .ttv-footer-timestamp {
     color: var(--ttv-cyan);
     font-family: inherit;
   }
 
+  /* Clean changelog content styles */
+  .changelog-container {
+    background: white;
+    color: #333;
+    border: 2px solid var(--ttv-border);
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1rem 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto",
+      "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+  }
+
+  .repo-section {
+    margin-bottom: 3rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  .repo-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+  }
+
+  .repo-title {
+    color: #2563eb;
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0 0 1.5rem 0;
+    font-family: inherit;
+    text-transform: none;
+    letter-spacing: normal;
+  }
+
+  .no-releases {
+    color: #6b7280;
+    font-style: italic;
+    text-align: center;
+    padding: 2rem;
+    font-family: inherit;
+  }
+
+  .release {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 6px;
+    padding: 1.5rem;
+  }
+
+  .release-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .release-tag {
+    background: #1f2937;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: "Courier New", monospace;
+  }
+
+  .release-date {
+    color: #6b7280;
+    font-size: 0.9rem;
+    font-family: inherit;
+  }
+
+  .release-name {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: #1f2937;
+    font-family: inherit;
+  }
+
+  .release-body {
+    color: #374151;
+    font-size: 0.9rem;
+    font-family: "Courier New", "Monaco", "Menlo", monospace;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 0;
+    overflow-x: auto;
+  }
+
   @media (max-width: 768px) {
-    .ttv-release-header {
+    .release-header {
       flex-direction: column;
       align-items: flex-start;
-      gap: 0.3rem;
+      gap: 0.5rem;
     }
 
-    .ttv-changelog-grid {
-      gap: 1.5rem;
+    .changelog-container {
+      padding: 1rem;
+      margin: 0.5rem 0;
     }
 
-    .ttv-repo-section {
-      padding: 0.8rem;
+    .repo-section {
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+    }
+
+    .release {
+      padding: 1rem;
     }
   }
 </style>
