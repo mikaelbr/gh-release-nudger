@@ -140,7 +140,7 @@ export const config = {
       <div class="ttv-header-underline"></div>
 
       <div class="ttv-nav">
-        <a href={`/changelogs${Astro.url.search}`} class="ttv-nav-link"
+        <a href="/changelogs" class="ttv-nav-link" id="changelogs-link"
           >VIEW CHANGELOGS →</a
         >
       </div>
@@ -206,6 +206,20 @@ export const config = {
       </div>
     </main>
     <script>
+      // Update navigation links with current search parameters
+      const updateNavLinks = () => {
+        const currentSearch = window.location.search;
+        const changelogsLink = document.getElementById(
+          "changelogs-link"
+        ) as HTMLAnchorElement;
+        if (changelogsLink) {
+          changelogsLink.href = `/changelogs${currentSearch}`;
+        }
+      };
+
+      // Update links on page load
+      updateNavLinks();
+
       setTimeout(() => {
         window.location.reload();
       }, 300000); // 300,000 ms = 5 minutes
