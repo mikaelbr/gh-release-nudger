@@ -112,14 +112,6 @@ const sortedReposData = reposData.sort((a, b) => {
   if (!a.isUpToDate && b.isUpToDate) return -1;
   return a.repository.full_name.localeCompare(b.repository.full_name);
 });
-
-// Enable static generation with ISR revalidation
-export const prerender = true;
-export const config = {
-  isr: {
-    revalidate: 300, // 5 minutes in seconds
-  },
-};
 ---
 
 <html lang="en">

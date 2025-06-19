@@ -44,14 +44,6 @@ const reposData = await Promise.all(
     };
   })
 );
-
-// Enable static generation with ISR revalidation
-export const prerender = true;
-export const config = {
-  isr: {
-    revalidate: 300, // 5 minutes in seconds
-  },
-};
 ---
 
 <html lang="en">
