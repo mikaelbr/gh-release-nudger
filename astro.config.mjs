@@ -5,7 +5,7 @@ import { envField } from "astro/config";
 
 // https://astro.build/config
 export default defineConfig({
-  output: "static",
+  output: "server",
   env: {
     schema: {
       GITHUB_TOKEN: envField.string({ context: "server", access: "secret" }),
