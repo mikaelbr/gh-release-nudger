@@ -83,7 +83,17 @@ export const config = {
         {
           reposData.map(({ repository, latestRelease }) => (
             <div class="repo-section">
-              <h2 class="repo-title">{repository.full_name}</h2>
+              <div class="repo-header">
+                <h2 class="repo-title">{repository.full_name}</h2>
+                {latestRelease && latestRelease.body && (
+                  <button
+                    class="copy-button"
+                    onclick={`copyChangelog('${repository.full_name}', ${JSON.stringify(latestRelease.body).replace(/"/g, "&quot;")})`}
+                  >
+                    📋 COPY
+                  </button>
+                )}
+              </div>
 
               {!latestRelease ? (
                 <div class="no-releases">No published releases</div>
@@ -128,6 +138,36 @@ export const config = {
         ) as HTMLAnchorElement;
         if (homeLink) {
           homeLink.href = `/${currentSearch}`;
+        }
+      };
+
+      // Copy changelog content to clipboard
+      (window as any).copyChangelog = async (
+        repoName: string,
+        body: string
+      ) => {
+        try {
+          const content = `# ${repoName}\n\n${body}`;
+          await navigator.clipboard.writeText(content);
+
+          // Show feedback
+          const buttons = document.querySelectorAll(
+            ".copy-button"
+          ) as NodeListOf<HTMLButtonElement>;
+          buttons.forEach((btn) => {
+            if (btn.onclick && btn.onclick.toString().includes(repoName)) {
+              const originalText = btn.textContent;
+              btn.textContent = "✅ COPIED!";
+              btn.style.backgroundColor = "#10b981";
+              setTimeout(() => {
+                btn.textContent = originalText;
+                btn.style.backgroundColor = "";
+              }, 2000);
+            }
+          });
+        } catch (err) {
+          console.error("Failed to copy:", err);
+          alert("Failed to copy to clipboard");
         }
       };
 
@@ -267,14 +307,45 @@ export const config = {
     padding-bottom: 0;
   }
 
+  .repo-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    gap: 1rem;
+  }
+
   .repo-title {
     color: #2563eb;
     font-size: 1.5rem;
     font-weight: 600;
-    margin: 0 0 1.5rem 0;
+    margin: 0;
     font-family: inherit;
     text-transform: none;
     letter-spacing: normal;
+  }
+
+  .copy-button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+
+  .copy-button:hover {
+    background: #2563eb;
+    transform: translateY(-1px);
+  }
+
+  .copy-button:active {
+    transform: translateY(0);
   }
 
   .no-releases {
