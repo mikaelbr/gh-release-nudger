@@ -32,5 +32,8 @@ export default defineConfig({
       domains: [],
       minimumCacheTTL: 300,
     },
+    isr: {
+      expiration: 300,
+    },
   }),
 });
